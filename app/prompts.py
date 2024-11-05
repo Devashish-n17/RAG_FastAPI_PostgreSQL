@@ -2,7 +2,7 @@ from app.models import User
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -19,7 +19,7 @@ llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=api_key)
 
 # Load PDF document
 def uploadAndSplitPdfFile(f):
-    file = 'data/' + f
+    file = "app\data\Evolution_of_AI.pdf"
     loader = PyPDFLoader(file)
     return loader
 
@@ -59,7 +59,8 @@ def promptTemplate(template_text, pages):
     combine_docs_chain = create_stuff_documents_chain(llm, prompt)
 
     # Create the final retrieval chain that integrates retrieval and response generation
-    vectordb = Chroma.from_documents(pages, generateEmbeddings("models/embedding-001")) 
+    # vectordb = Chroma.from_documents(pages, generateEmbeddings("models/embedding-001"))
+    vectordb = FAISS.from_documents(pages, generateEmbeddings("models/embedding-001"))
     retriever = vectordb.as_retriever(search_kwargs={"k": 5})
     
     retrieval_chain = create_retrieval_chain(retriever, combine_docs_chain)

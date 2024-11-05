@@ -1,4 +1,3 @@
-
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,14 +5,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 import os
 
-from langchain.llms import OpenAI
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-
 from app import auth, models, schemas, security
 from app.db import get_db
 from app.models import User
-from app.prompts import generate_context, qa_template
+from app.prompts import generate_context, promptTemplate, getPromptsAndReturnResponse, createChunks, uploadAndSplitPdfFile
 
 from dotenv import load_dotenv, find_dotenv
 
@@ -21,6 +16,12 @@ load_dotenv(find_dotenv())
 
 router = APIRouter()
 
+@router.get('/get_loggedIn_user')
+async def get_loggedIn_user(current_user: schemas.UserInDB = Depends(auth.get_current_user)):
+    return {
+        "conversation": "This is a secure conversation",
+        "current_user": current_user.username
+    }
 
 @router.post("/register/", response_model=schemas.UserInDBBase)
 async def register(user_in: schemas.UserIn, db: Session = Depends(get_db)):
@@ -33,7 +34,7 @@ async def register(user_in: schemas.UserIn, db: Session = Depends(get_db)):
 
     hashed_password = security.get_password_hash(user_in.password)
     db_user = models.User(
-        **user_in.dict(exclude={"password"}), hashed_password=hashed_password
+        **user_in.model_dump(exclude={"password"}), hashed_password=hashed_password
     )
     db.add(db_user)
     db.commit()
@@ -61,39 +62,6 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-# @router.post("/conversation/")
-# async def read_conversation(
-#     query: str,
-#     current_user: schemas.UserInDB = Depends(auth.get_current_user),
-#     db: Session = Depends(get_db),
-# ):
-#     db_user = db.query(User).get(current_user.id)
-#     if not db_user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#     context = generate_context(db_user)
-
-#     llm = OpenAI(
-#         temperature=0,
-#         openai_api_key=os.environ.get("OPENAI_API_KEY"),
-#     )
-#     prompt = PromptTemplate(
-#         input_variables=["context", "question"], template=qa_template
-#     )
-#     chain = LLMChain(llm=llm, prompt=prompt)
-
-#     response = chain.run(context=context, question=query)
-
-#     return {"response": response}
-
-
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-import os
-from app import schemas, auth
-from app.models import User
-from prompts import promptTemplate, getPromptsAndReturnResponse, createChunks, uploadAndSplitPdfFile
-
-router = APIRouter()
 
 # Load the PDF and create chunks once at the start
 loader = uploadAndSplitPdfFile('Evolution_of_AI.pdf')
